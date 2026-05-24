@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Object config serialization and deserialization logic."""
 
 import importlib
@@ -139,7 +140,7 @@ def serialize_keras_object(obj):
     """Retrieve the config dict by serializing the Keras object.
 
     `serialize_keras_object()` serializes a Keras object to a python dictionary
-    that represents the object, and is a reciprocal function of
+    that represents the object, and is a reciprocol function of
     `deserialize_keras_object()`. See `deserialize_keras_object()` for more
     information about the config format.
 
@@ -482,7 +483,7 @@ def deserialize_keras_object(
     ```python
     @keras.saving.register_keras_serializable(package='my_package')
     class ModifiedMeanSquaredError(keras.losses.MeanSquaredError):
-      ...
+        ...
 
     dict_structure = {
         "class_name": "ModifiedMeanSquaredError",
@@ -618,7 +619,31 @@ def deserialize_keras_object(
         }
 
     class_name = config["class_name"]
-    inner_config = config["config"] or {}
+    inner_config = config["config"]
+    if class_name == "function":
+        if inner_config is None or not isinstance(inner_config, str):
+            raise TypeError(
+                f"Expected 'config' to be a non-null string for function, "
+                f"got {type(inner_config).__name__}. "
+                f"Full config: {config}"
+            )
+    elif class_name == "typespec":
+        if inner_config is None or not isinstance(inner_config, (list, tuple)):
+            raise TypeError(
+                f"Expected 'config' to be a non-null list or tuple for "
+                f"_typespec_, got {type(inner_config).__name__}. "
+                f"Full config: {config}"
+            )
+    else:
+        if inner_config is None:
+            inner_config = {}
+        elif not isinstance(inner_config, dict):
+            raise TypeError(
+                f"Expected 'config' to be a dict, got "
+                f"{type(inner_config).__name__}. "
+                f"For class '{class_name}', pass a dict with the expected "
+                "configuration keys."
+            )
     custom_objects = custom_objects or {}
 
     # Special cases:
@@ -665,7 +690,7 @@ def deserialize_keras_object(
                 "it is disallowed by default. If you trust the source of the "
                 "artifact, you can override this error by passing "
                 "`safe_mode=False` to the loading function, or calling "
-                "`keras.config.enable_unsafe_deserialization()."
+                "`keras.config.enable_unsafe_deserialization()`."
             )
         return python_utils.func_load(inner_config["value"])
     if tf is not None and config["class_name"] == "__typespec__":
